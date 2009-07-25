@@ -1,6 +1,7 @@
 import csv
 import MySQLdb
 
+print "test"
 db = MySQLdb.connect(host='166.70.159.134', user='nick', passwd='mohair94', db='market')
 curs = db.cursor()
 
