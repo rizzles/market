@@ -1,5 +1,5 @@
-import matplotlib
-matplotlib.use('Agg')
+#import matplotlib
+#matplotlib.use('Agg')
 import datetime
 import numpy as np
 import matplotlib.colors as colors
@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager as font_manager
 import matplotlib.ticker as t
 import MySQLdb
-from pylab import *
+from matplotlib.lines import Line2D
 
 db = MySQLdb.connect(host='166.70.159.134', user='nick', passwd='mohair94', db='market')
 curs = db.cursor()
@@ -54,26 +54,18 @@ ax.set_title('%s Daily'%ticker)
 
 
 #ax.xaxis.set_major_locator(mdates.MonthLocator())
-ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
+ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
 #ax.xaxis.set_minor_locator(mdates.MonthLocator(bymonthday=15))
 
 #ax.xaxis.set_major_formatter(t.NullFormatter())
 ax.xaxis.set_major_formatter(mdates.DateFormatter('%b-%Y')) 
 
-#for tick in ax.xaxis.get_minor_ticks():
-#    tick.tick1line.set_markersize(0)
-#    tick.tick2line.set_markersize(0)
-#    tick.label1.set_horizontalalignment('center') 
-
 for label in ax.get_xticklabels():
     label.set_rotation(30)
     label.set_horizontalalignment('right')
 
-#vline1 = lin.Line2d(xdata=fh[0],ydata=fh[2], color='green')
-#ax.add_line(vline1)
+vline1 = Line2D(xdata=[fh[0][0],fh[10][0]], ydata=[fh[0][3],fh[10][3]],color='b',linewidth=1.0,antialiased=True,)
+ax.add_line(vline1)
 
-ax.plot ( arange(0,20),[9,4,5,2,3,5,7,12,2,3],'.-',label='sample1' )
-ax.plot ( arange(0,20),[12,5,33,2,4,5,3,3,22,10],'o-',label='sample2' )
-
-
-plt.savefig('/var/www/test2.png')
+plt.show()
+#plt.savefig('/var/www/test2.png')
