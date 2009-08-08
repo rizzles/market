@@ -8,34 +8,66 @@ from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as Naviga
 from matplotlib.figure import Figure
 import matplotlib.finance as finance
 from matplotlib.lines import Line2D
+from matplotlib.patches import Rectangle
 from matplotlib.dates import DateFormatter, DayLocator, MONDAY, WeekdayLocator
+from matplotlib.dates import *
+import numpy
 
 import MySQLdb
+
+import datetime
 
 class AppForm(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
-        self.setWindowTitle('Demo: PyQt with matplotlib')
+        self.version = "14"
+        self.setWindowTitle('Daily Chart')
 
         self.setup_dbase()
-        self.setup_trend()
         self.create_menu()
         self.create_main_frame()
         self.create_status_bar()
 
         self.textbox.setText('Press Next to Start Looking for Trend')
-        self.on_draw()
 
     def setup_dbase(self):
-        self.ticker = 'GOOG'
+        self.ticker = 'MSFT'
         self.db = MySQLdb.connect(host='166.70.159.134', user='nick', passwd='mohair94', db='market')
         self.curs = self.db.cursor()
 
-        query="""SELECT date,open,close,high,low,volume from %s order by date"""%self.ticker
-#        query="""SELECT date,open,close,high,low,volume from %s where date > 733480 AND date < 733575 order by date"""%self.ticker
-        self.curs.execute(query)
+    def get_stock(self):
+        self.ticker = str(self.stockbox.text()).upper()
+        startdate = datetime.date(2007,1,1)
+        today = datetime.date.today()
         
-        self.fh = self.curs.fetchall()
+        try:
+            query="""SHOW TABLES FROM market LIKE '%s'"""%self.ticker
+            self.curs.execute(query)
+            exists = self.curs.fetchall()
+
+            query="""SELECT date,open,close,high,low,id from %s order by date"""%self.ticker
+            self.curs.execute(query)
+            self.fh = self.curs.fetchall()
+
+            self.setup_trend()
+            self.on_draw()
+        except:
+            try:
+                insert = finance.quotes_historical_yahoo(self.ticker, startdate, today, adjusted=True)
+                self.curs.execute("CREATE TABLE %s(id int AUTO_INCREMENT,date int,open float,close float,high float, low float, volume float, PRIMARY KEY(id))ENGINE=MYISAM;"%self.ticker)
+                query="""INSERT INTO %s(date,open,close,high,low,volume) values(%%s,%%s,%%s,%%s,%%s,%%s)"""%self.ticker
+                for row in insert:
+                    self.curs.execute(query,(row[0],row[1],row[2],row[3],row[4],row[5]))
+                
+                query="""SELECT date,open,close,high,low,id from %s order by date"""%self.ticker
+                self.curs.execute(query)
+                self.fh = self.curs.fetchall()
+
+                self.setup_trend()
+                self.on_draw()
+            except:
+                QMessageBox.information(self, "Error", "Could not find a stock with that name on Yahoo")
+        
 
     def setup_trend(self):
         self.counter = 30
@@ -59,9 +91,10 @@ class AppForm(QMainWindow):
         self.p2arrow = False
         self.p3arrow = False
         self.p4arrow = False
-        self.trendline = True
+        self.trendline = False
         self.p13line = False
         self.p24line = False
+        self.nodata = False
 
     def identify_trend(self):
         self.p1arrow = False
@@ -105,10 +138,29 @@ class AppForm(QMainWindow):
             self.textbox.setText('No trend identified')
             self.incriment = True
 
+    def change_dates(self):
+        temp =  self.firstdatebox.date()
+        t1 = datetime.datetime(temp.year(), temp.month(), temp.day())
+        t2 = int(date2num(t1))
+        for row in self.fh:
+            if t2 <= row[0]:
+                firstvalue = row[5]
+                break
+        temp = self.lastdatebox.date()
+        t1 = datetime.datetime(temp.year(), temp.month(), temp.day())
+        t2 = int(date2num(t1))
+        for row in self.fh:
+            if t2 <= row[0]:
+                lastvalue = row[5]
+                break
+        self.fh = self.fh[firstvalue:lastvalue]
+        self.on_draw()
+
     def trend(self):
         if not self.boolUP and not self.boolDOWN:
             self.identify_trend()
-        elif self.boolUP or self.boolDOWN:
+#        elif self.boolUP or self.boolDOWN:
+        elif self.boolUP:
             if self.fh[self.counter][3] > self.p1high:
                 self.p2low = self.p1low
                 self.boolDOWN = False
@@ -153,44 +205,10 @@ class AppForm(QMainWindow):
                 self.textbox.setText('Point 4 set at %.2f'%self.p4low)
             else:
                 self.textbox.setText('New data did nothing')
-                
+                self.nodata = True
 
         self.on_draw()
 
-
-    def save_plot(self):
-        file_choices = "PNG (*.png)|*.png"
-        
-        path = unicode(QFileDialog.getSaveFileName(self, 
-                        'Save file', '', 
-                        file_choices))
-        if path:
-            self.canvas.print_figure(path, dpi=self.dpi)
-            self.statusBar().showMessage('Saved to %s' % path, 2000)
-    
-    def on_about(self):
-        msg = """ A demo of using PyQt with matplotlib:
-        
-         * Use the matplotlib navigation bar
-         * Add values to the text box and press Enter (or click "Draw")
-         * Show or hide the grid
-         * Drag the slider to modify the width of the bars
-         * Save the plot to a file using the File menu
-         * Click on a bar to receive an informative message
-        """
-        QMessageBox.about(self, "About the demo", msg.strip())
-    
-    def on_pick(self, event):
-        # The event received here is of the type
-        # matplotlib.backend_bases.PickEvent
-        #
-        # It carries lots of information, of which we're using
-        # only a small amount here.
-        # 
-        box_points = event.artist.get_bbox().get_points()
-        msg = "You've clicked on a bar with coords:\n %s" % box_points
-        
-        QMessageBox.information(self, "Click!", msg)
     
     def on_draw(self):
         """ Redraws the figure
@@ -201,8 +219,6 @@ class AppForm(QMainWindow):
 
         finance.candlestick(self.axes, quotes=self.fh[0:99], width=0.4, colorup='green', colordown='red')
 
-#        if self.line1:
-#            self.axes.add_line(self.line1)
         if self.trendline:
             self.axes.annotate('Start', xy=(self.fh[self.counter-30][0],self.fh[self.counter-30][3]), xytext=(-50,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->")) 
             self.axes.annotate('End', xy=(self.fh[self.counter][0],self.fh[self.counter][3]), xytext=(-50,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))         
@@ -220,11 +236,25 @@ class AppForm(QMainWindow):
         if self.p24line:
             line1 = Line2D(xdata=[self.p2date,self.p4date], ydata=[self.p2low,self.p4low],color='r',linewidth=1.0,antialiased=True,)        
             self.axes.add_line(line1)
+        if self.nodata:
+            highlight = Line2D(xdata=(self.fh[self.counter][0],self.fh[self.counter][0]), ydata=(self.fh[self.counter][3],self.fh[self.counter][4]), color='blue')
+            if self.fh[self.counter][2] >= self.fh[self.counter][1]:
+                lower = self.fh[self.counter][1]
+                height = self.fh[self.counter][2] - self.fh[self.counter][1]
+            else:
+                lower = self.fh[self.counter][2]
+                height = self.fh[self.counter][1] - self.fh[self.counter][2]
+            rect = Rectangle(xy=(self.fh[self.counter][0]-0.3,lower),width=0.6,height=height,facecolor='blue',edgecolor='blue')
+    
+            self.axes.add_line(highlight)
+            self.axes.add_patch(rect)
+            self.nodata = False
 
         self.axes.set_title('%s Daily'%self.ticker)
         self.axes.xaxis.set_major_locator(WeekdayLocator(MONDAY)) # major ticks on the mondays
         self.axes.xaxis.set_minor_locator(DayLocator()) # minor ticks on the days
-        self.axes.xaxis.set_major_formatter(DateFormatter('%b %d')) # Eg, Jan 12
+        self.axes.xaxis.set_major_formatter(DateFormatter('%b')) # Eg, Jan 12
+        #self.axes.xaxis.set_major_formatter(DateFormatter('%b %d %Y')) # Eg, Jan 12
         #self.axes.xaxis.set_major_formatter(DateFormatter('%d') # Eg, 12
         self.axes.xaxis_date()
         #self.axes.autoscale_view()
@@ -232,6 +262,7 @@ class AppForm(QMainWindow):
             label.set_rotation(45)
             label.set_horizontalalignment('right')
         self.axes.grid()
+        
 
         self.canvas.draw()
 
@@ -245,7 +276,7 @@ class AppForm(QMainWindow):
         # 7x6 inches, 100 dots-per-inch
         #
         self.dpi = 100
-        self.fig = Figure((7.0, 6.0), dpi=self.dpi)
+        self.fig = Figure((7.0, 7.0), dpi=self.dpi)
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setParent(self.main_frame)
         
@@ -260,19 +291,22 @@ class AppForm(QMainWindow):
         #
         self.canvas.mpl_connect('pick_event', self.on_pick)
         
-        # Create the navigation toolbar, tied to the canvas
-        #
-        self.mpl_toolbar = NavigationToolbar(self.canvas, self.main_frame)
-        
         # Other GUI controls
         # 
+        self.stockbox = QLineEdit()
+        self.stockbox.setMinimumWidth(100)
+        self.stockbox.setMaximumWidth(100)
+
         self.textbox = QLineEdit()
         self.textbox.setMinimumWidth(200)
-        self.connect(self.textbox, SIGNAL('editingFinished ()'), self.on_draw)
+        self.connect(self.textbox, SIGNAL('editingFinished ()'), self.get_stock)
         
         self.draw_button = QPushButton("&Next")
         self.connect(self.draw_button, SIGNAL('clicked()'), self.trend)
         
+        self.stockbutton = QPushButton("&Get Stock")
+        self.connect(self.stockbutton, SIGNAL('clicked()'), self.get_stock)
+
         self.triangle_up = QCheckBox("Triangle")
         self.triangle_up.setChecked(True)
         self.connect(self.triangle_up, SIGNAL('stateChanged(int)'), self.on_draw)
@@ -288,32 +322,48 @@ class AppForm(QMainWindow):
         self.slider.setTracking(True)
         self.slider.setTickPosition(QSlider.TicksBothSides)
         self.connect(self.slider, SIGNAL('valueChanged(int)'), self.on_draw)
-        
+
+        self.firstdatebox = QDateEdit()
+        self.lastdatebox = QDateEdit()
+
+        self.firstdatebox.setDisplayFormat('MM/yyyy')
+        self.lastdatebox.setDisplayFormat('MM/yyyy')
+        self.firstdatebox.setDate(QDate.fromString('022007', 'MMyyyy'))
+        self.lastdatebox.setDate(QDate.fromString('072009', 'MMyyyy'))
+
+        self.datebutton = QPushButton("&Change Dates")
+        self.connect(self.datebutton, SIGNAL('clicked()'), self.change_dates)
         #
         # Layout with box sizers
         # 
         hbox = QHBoxLayout()
+        hbox15 = QHBoxLayout()
         hbox2 = QHBoxLayout()
         
-        for w in [  self.textbox, self.draw_button]:
+        for w in [  self.stockbox, self.stockbutton, self.firstdatebox, self.lastdatebox, self.datebutton ]:
             hbox.addWidget(w)
             hbox.setAlignment(w, Qt.AlignVCenter)
+            
+        for y in [ self.triangle_up, self.headandshoulders ]:
+            hbox15.addWidget(y)
+            hbox15.setAlignment(y, Qt.AlignVCenter)
 
-        for x in [ self.slider ]:
+        for x in [ self.textbox, self.draw_button ]:
             hbox2.addWidget(x)
-            hbox.setAlignment(x, Qt.AlignVCenter)
+            hbox2.setAlignment(x, Qt.AlignVCenter)
+        
         
         vbox = QVBoxLayout()
         vbox.addWidget(self.canvas)
-        vbox.addWidget(self.mpl_toolbar)
         vbox.addLayout(hbox)
+        vbox.addLayout(hbox15)
         vbox.addLayout(hbox2)
         
         self.main_frame.setLayout(vbox)
         self.setCentralWidget(self.main_frame)
 
     def create_status_bar(self):
-        self.status_text = QLabel("This is a demo")
+        self.status_text = QLabel("version %s"%self.version)
         self.statusBar().addWidget(self.status_text, 1)
         
     def create_menu(self):        
@@ -334,6 +384,34 @@ class AppForm(QMainWindow):
             tip='About the demo')
         
         self.add_actions(self.help_menu, (about_action,))
+
+    def save_plot(self):
+        file_choices = "PNG (*.png)|*.png"
+        
+        path = unicode(QFileDialog.getSaveFileName(self, 
+                        'Save file', '', 
+                        file_choices))
+        if path:
+            self.canvas.print_figure(path, dpi=self.dpi)
+            self.statusBar().showMessage('Saved to %s' % path, 2000)
+    
+    def on_about(self):
+        msg = "Version %s"%self.version
+
+        QMessageBox.about(self, "About..", msg.strip())
+    
+    def on_pick(self, event):
+        # The event received here is of the type
+        # matplotlib.backend_bases.PickEvent
+        #
+        # It carries lots of information, of which we're using
+        # only a small amount here.
+        # 
+        box_points = event.artist.get_bbox().get_points()
+        msg = "You've clicked on a bar with coords:\n %s" % box_points
+        
+        QMessageBox.information(self, "Click!", msg)
+
 
     def add_actions(self, target, actions):
         for action in actions:
