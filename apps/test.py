@@ -82,16 +82,22 @@ class AppForm(QMainWindow):
         self.lastDay = self.fh[0]
         self.boolUP = False
         self.boolDOWN = False
-        self.line1 = None
         self.p1date = 0
         self.p1high = 0
         self.p1low = 0
         self.p2date = 0
+        self.p2high = 0
         self.p2low = 0
         self.p3date = 0
         self.p3high = 0
+        self.p3low = 0
         self.p4date = 0
+        self.p4high = 0
         self.p4low = 0
+        self.p1set = False
+        self.p2set = False
+        self.p3set = False
+        self.p4set = False
         self.diff = 0
         self.incriment = False
         self.p1arrow = False
@@ -102,6 +108,27 @@ class AppForm(QMainWindow):
         self.p13line = False
         self.p24line = False
         self.nodata = False
+
+    def change_dates(self):
+        temp =  self.firstdatebox.date()
+        t1 = datetime.datetime(temp.year(), temp.month(), temp.day())
+        t2 = int(date2num(t1))
+        for row in self.whole:
+            if t2 <= row[0]:
+                firstvalue = row[5]
+                break
+        temp = self.lastdatebox.date()
+        t1 = datetime.datetime(temp.year(), temp.month(), temp.day())
+        t2 = int(date2num(t1))
+        for row in self.whole:
+            if t2 <= row[0]:
+                lastvalue = row[5]
+                break
+        self.fh = self.whole[firstvalue:lastvalue]
+        self.setup_trend()
+        self.trendline = True
+        self.textbox.setText('Press Next to start looking for trend.')
+        self.on_draw()
 
     def identify_trend(self):
         self.p1arrow = False
@@ -129,6 +156,7 @@ class AppForm(QMainWindow):
         self.p1high = self.lastDay[3]
         self.p1low = self.lastDay[4]
         self.p2low = self.p1low
+        self.p2high = self.p1high
         self.diff = 0
             
         if changeUP > 55 and not self.boolUP:
@@ -137,31 +165,17 @@ class AppForm(QMainWindow):
             self.incriment = True
             self.trendline = False
             self.p1arrow = True
+            self.p1set = True
         elif changeDOWN > 55 and not self.boolDOWN:
-            self.textbox.setText('Downward trend identified')
+            self.textbox.setText('Downward trend identified. Point 1 set at %.2f'%self.fh[self.counter][4])
+            self.trendline = False
+            self.p1arrow = True
             self.boolDOWN = True
-            self.incirment = True
+            self.incriment = True
+            self.p1set = True
         else:
             self.textbox.setText('No trend identified')
             self.incriment = True
-
-    def change_dates(self):
-        temp =  self.firstdatebox.date()
-        t1 = datetime.datetime(temp.year(), temp.month(), temp.day())
-        t2 = int(date2num(t1))
-        for row in self.whole:
-            if t2 <= row[0]:
-                firstvalue = row[5]
-                break
-        temp = self.lastdatebox.date()
-        t1 = datetime.datetime(temp.year(), temp.month(), temp.day())
-        t2 = int(date2num(t1))
-        for row in self.whole:
-            if t2 <= row[0]:
-                lastvalue = row[5]
-                break
-        self.fh = self.whole[firstvalue:lastvalue]
-        self.on_draw()
 
     def trend(self):
         if not self.boolUP and not self.boolDOWN:
@@ -192,6 +206,8 @@ class AppForm(QMainWindow):
                 self.difflow = self.p2low + self.diff
                 self.incriment = True
                 self.p2arrow = True
+                self.p3arrow = False
+                self.p13line = False
                 self.textbox.setText('Point 2 set at %.2f'%self.p2low)
             elif self.p2low < self.p1low and self.fh[self.counter][3] > self.diffhigh and self.fh[self.counter][3] > self.p3high:
                 self.p3date = self.fh[self.counter][0]
@@ -206,13 +222,74 @@ class AppForm(QMainWindow):
                 self.p4low = self.fh[self.counter][4]
                 self.p4arrow = True
                 self.p24line = True
-                self.incriment = True
-                self.boolUP = False
-                self.boolDOWN = False
+                self.incriment = False
                 self.textbox.setText('Point 4 set at %.2f'%self.p4low)
             else:
                 self.textbox.setText('New data did nothing')
                 self.nodata = True
+
+        elif self.boolDOWN:
+            if self.fh[self.counter][4] < self.p1low:
+                self.p2high = self.p1high
+                self.boolDOWN = False
+                self.boolUP = False
+                self.incriment = False
+                self.trendline = True
+                self.p1arrow = False
+                self.p2arrow = False
+                self.p3arrow = False
+                self.p4arrow = False
+                self.p13line = False
+                self.p24line = False
+                self.p1set = False
+                self.p2set = False
+                self.p3set = False
+                self.p4set = False
+                self.p3low = 0
+                self.p4high = 0
+                self.textbox.setText('New data is lower than Point 1. Start looking for new trend.')
+#            elif self.fh[self.counter][4] < self.p1low and self.fh[self.counter][4] < self.p2low:
+            elif self.fh[self.counter][3] > self.p1high and self.fh[self.counter][3] > self.p2high:
+                self.p2date = self.fh[self.counter][0]
+                self.p2high = self.fh[self.counter][3]
+                self.diff = self.p2high - self.p1low
+                self.diff = self.diff / 3
+                self.diffhigh = self.p2high - self.diff
+                self.difflow = self.p1low + self.diff
+                self.incriment = True
+                self.p3low = self.difflow
+                self.p4high = 0
+                self.p2arrow = True
+                self.p3arrow = False
+                self.p13line = False
+                self.p2set = True
+                self.p3set = False
+                self.p4set = False
+                self.textbox.setText('Point 2 set at %.2f'%self.p2high)
+#            elif self.p2low < self.p1low and self.fh[self.counter][3] > self.diffhigh and self.fh[self.counter][3] > self.p3high:
+            elif self.p2high > self.p1high and self.fh[self.counter][4] < self.difflow and self.fh[self.counter][4] < self.p3low:
+                self.p3date = self.fh[self.counter][0]
+                self.incriment = True
+                self.p3low = self.fh[self.counter][4]
+                self.p4high = self.fh[self.counter][3]
+                self.p3arrow = True
+                self.p13line = True
+                self.p2set = True
+                self.p3set = True
+                self.p4set = False
+                self.textbox.setText('Point 3 set at %.2f'%self.p3low)
+#            elif self.p2low > 0 and self.p3high > 0 and self.fh[self.counter][4] < self.difflow and self.fh[self.counter][4] < self.p4low:
+            elif self.p2set and self.p3set and self.fh[self.counter][3] > self.diffhigh and self.fh[self.counter][3] > self.p4high:
+                self.p4date = self.fh[self.counter][0]
+                self.p4high = self.fh[self.counter][3]
+                self.p4arrow = True
+                self.p24line = True
+                self.incriment = False
+                self.textbox.setText('Point 4 set at %.2f'%self.p4high)
+            else:
+                self.textbox.setText('New data did nothing')
+                self.nodata = True
+                self.incriment = True
 
         self.on_draw()
 
@@ -223,38 +300,6 @@ class AppForm(QMainWindow):
         # clear the axes and redraw the plot anew
         #
         self.axes.clear()        
-
-
-        if self.trendline:
-            self.axes.annotate('Start', xy=(self.fh[self.counter-30][0],self.fh[self.counter-30][3]), xytext=(-50,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->")) 
-            self.axes.annotate('End', xy=(self.fh[self.counter][0],self.fh[self.counter][3]), xytext=(-50,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))         
-        if self.p1arrow:
-            self.axes.annotate('Point 1', xy=(self.p1date,self.p1high), xytext=(-50,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
-        if self.p2arrow:
-            self.axes.annotate('Point 2', xy=(self.p2date,self.p2low), xytext=(0,-30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
-        if self.p3arrow:
-            self.axes.annotate('Point 3', xy=(self.p3date,self.p3high), xytext=(-10,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
-        if self.p4arrow:
-            self.axes.annotate('Point 4', xy=(self.p4date,self.p4low), xytext=(0,-30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
-        if self.p13line:
-            line1 = Line2D(xdata=[self.p1date,self.p3date], ydata=[self.p1high,self.p3high],color='b',linewidth=1.0,antialiased=True,)        
-            self.axes.add_line(line1)
-        if self.p24line:
-            line1 = Line2D(xdata=[self.p2date,self.p4date], ydata=[self.p2low,self.p4low],color='r',linewidth=1.0,antialiased=True,)        
-            self.axes.add_line(line1)
-        if self.nodata:
-            highlight = Line2D(xdata=(self.fh[self.counter][0],self.fh[self.counter][0]), ydata=(self.fh[self.counter][3],self.fh[self.counter][4]), color='blue')
-            if self.fh[self.counter][2] >= self.fh[self.counter][1]:
-                lower = self.fh[self.counter][1]
-                height = self.fh[self.counter][2] - self.fh[self.counter][1]
-            else:
-                lower = self.fh[self.counter][2]
-                height = self.fh[self.counter][1] - self.fh[self.counter][2]
-            rect = Rectangle(xy=(self.fh[self.counter][0]-0.3,lower),width=0.6,height=height,facecolor='blue',edgecolor='blue')
-    
-            self.axes.add_line(highlight)
-            self.axes.add_patch(rect)
-            self.nodata = False
 
         diff = self.fh[-1][0] - self.fh[0][0]
 
@@ -280,6 +325,57 @@ class AppForm(QMainWindow):
             self.axes.xaxis.set_major_formatter(DateFormatter('%b %d')) # Eg, Jan 12
 
 
+        if self.trendline:
+            self.axes.annotate('Start', xy=(self.fh[self.counter-30][0],self.fh[self.counter-30][3]), xytext=(-50,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->")) 
+            self.axes.annotate('End', xy=(self.fh[self.counter][0],self.fh[self.counter][3]), xytext=(-50,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))         
+
+        if self.p1arrow and self.boolUP:
+            self.axes.annotate('Point 1', xy=(self.p1date,self.p1high), xytext=(-50,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
+        if self.p2arrow and self.boolUP:
+            self.axes.annotate('Point 2', xy=(self.p2date,self.p2low), xytext=(0,-30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
+        if self.p3arrow and self.boolUP:
+            self.axes.annotate('Point 3', xy=(self.p3date,self.p3high), xytext=(-10,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
+        if self.p4arrow and self.boolUP:
+            self.axes.annotate('Point 4', xy=(self.p4date,self.p4low), xytext=(0,-30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
+
+        if self.p1arrow and self.boolDOWN:
+            self.axes.annotate('Point 1', xy=(self.p1date,self.p1low), xytext=(-10,-30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
+        if self.p2arrow and self.boolDOWN:
+            self.axes.annotate('Point 2', xy=(self.p2date,self.p2high), xytext=(0,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
+        if self.p3arrow and self.boolDOWN:
+            self.axes.annotate('Point 3', xy=(self.p3date,self.p3low), xytext=(-10,-30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
+        if self.p4arrow and self.boolDOWN:
+            self.axes.annotate('Point 4', xy=(self.p4date,self.p4high), xytext=(0,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
+
+        if self.p13line and self.boolUP:
+            line1 = Line2D(xdata=[self.p1date,self.p3date], ydata=[self.p1high,self.p3high],color='b',linewidth=1.0,antialiased=True,)        
+            self.axes.add_line(line1)
+        if self.p24line and self.boolUP:
+            line1 = Line2D(xdata=[self.p2date,self.p4date], ydata=[self.p2low,self.p4low],color='r',linewidth=1.0,antialiased=True,)        
+            self.axes.add_line(line1)
+
+        if self.p13line and self.boolDOWN:
+            line1 = Line2D(xdata=[self.p1date,self.p3date], ydata=[self.p1low,self.p3low],color='b',linewidth=1.0,antialiased=True,)        
+            self.axes.add_line(line1)
+        if self.p24line and self.boolDOWN:
+            line1 = Line2D(xdata=[self.p2date,self.p4date], ydata=[self.p2high,self.p4high],color='r',linewidth=1.0,antialiased=True,)        
+            self.axes.add_line(line1)
+
+        if self.nodata:
+            highlight = Line2D(xdata=(self.fh[self.counter][0],self.fh[self.counter][0]), ydata=(self.fh[self.counter][3],self.fh[self.counter][4]), color='blue')
+            if self.fh[self.counter][2] >= self.fh[self.counter][1]:
+                lower = self.fh[self.counter][1]
+                height = self.fh[self.counter][2] - self.fh[self.counter][1]
+            else:
+                lower = self.fh[self.counter][2]
+                height = self.fh[self.counter][1] - self.fh[self.counter][2]
+            rect = Rectangle(xy=(self.fh[self.counter][0]-0.3,lower),width=0.6,height=height,facecolor='blue',edgecolor='blue')
+    
+            self.axes.add_line(highlight)
+            self.axes.add_patch(rect)
+            self.nodata = False
+
+
         self.axes.set_title('%s Daily'%self.ticker)
         self.axes.xaxis_date()
 
@@ -290,6 +386,10 @@ class AppForm(QMainWindow):
         
 
         self.canvas.draw()
+
+        if self.p24line:
+            self.boolUP = False
+            self.boolDOWN = False
 
         if self.incriment:
             self.counter += 1
