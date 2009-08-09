@@ -47,8 +47,8 @@ class AppForm(QMainWindow):
 
             query="""SELECT date,open,close,high,low,id from %s order by date"""%self.ticker
             self.curs.execute(query)
-            self.fh = self.curs.fetchall()
-
+            self.whole = self.curs.fetchall()
+            self.fh = self.whole
             self.setup_trend()
             self.on_draw()
         except:
@@ -61,8 +61,8 @@ class AppForm(QMainWindow):
                 
                 query="""SELECT date,open,close,high,low,id from %s order by date"""%self.ticker
                 self.curs.execute(query)
-                self.fh = self.curs.fetchall()
-
+                self.whole = self.curs.fetchall()
+                self.fh = self.whole
                 self.setup_trend()
                 self.on_draw()
             except:
@@ -142,18 +142,18 @@ class AppForm(QMainWindow):
         temp =  self.firstdatebox.date()
         t1 = datetime.datetime(temp.year(), temp.month(), temp.day())
         t2 = int(date2num(t1))
-        for row in self.fh:
+        for row in self.whole:
             if t2 <= row[0]:
                 firstvalue = row[5]
                 break
         temp = self.lastdatebox.date()
         t1 = datetime.datetime(temp.year(), temp.month(), temp.day())
         t2 = int(date2num(t1))
-        for row in self.fh:
+        for row in self.whole:
             if t2 <= row[0]:
                 lastvalue = row[5]
                 break
-        self.fh = self.fh[firstvalue:lastvalue]
+        self.fh = self.whole[firstvalue:lastvalue]
         self.on_draw()
 
     def trend(self):
@@ -251,7 +251,7 @@ class AppForm(QMainWindow):
 
         diff = self.fh[-1][0] - self.fh[0][0]
 
-        if diff > 200:
+        if diff > 180:
             x = []
             y = []
             for data in self.fh:
@@ -261,19 +261,21 @@ class AppForm(QMainWindow):
             self.axes.xaxis.set_major_locator(YearLocator())
             self.axes.xaxis.set_major_formatter(DateFormatter('%Y'))
             self.axes.xaxis.set_minor_locator(MonthLocator())
+        elif diff <= 180 and diff > 100:
+            finance.candlestick(self.axes, quotes=self.fh, width=0.4, colorup='green', colordown='red')
+            self.axes.xaxis.set_major_locator(MonthLocator()) # major ticks on the mondays
+            self.axes.xaxis.set_minor_locator(WeekdayLocator(MONDAY)) # minor ticks on the days
+            self.axes.xaxis.set_major_formatter(DateFormatter('%b')) # Eg, Jan 12
         else:
-            finance.candlestick(self.axes, quotes=self.fh[0:99], width=0.4, colorup='green', colordown='red')
+            finance.candlestick(self.axes, quotes=self.fh, width=0.4, colorup='green', colordown='red')
             self.axes.xaxis.set_major_locator(WeekdayLocator(MONDAY)) # major ticks on the mondays
             self.axes.xaxis.set_minor_locator(DayLocator()) # minor ticks on the days
-            self.axes.xaxis.set_major_formatter(DateFormatter('%b')) # Eg, Jan 12
+            self.axes.xaxis.set_major_formatter(DateFormatter('%b %d')) # Eg, Jan 12
 
 
         self.axes.set_title('%s Daily'%self.ticker)
-    
-        #self.axes.xaxis.set_major_formatter(DateFormatter('%b %d %Y')) # Eg, Jan 12
-        #self.axes.xaxis.set_major_formatter(DateFormatter('%d') # Eg, 12
         self.axes.xaxis_date()
-        #self.axes.autoscale_view()
+
         for label in self.axes.get_xticklabels():
             label.set_rotation(45)
             label.set_horizontalalignment('right')
