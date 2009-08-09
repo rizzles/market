@@ -37,36 +37,43 @@ class AppForm(QMainWindow):
 
     def get_stock(self):
         self.ticker = str(self.stockbox.text()).upper()
-        startdate = datetime.date(2007,1,1)
+        startdate = datetime.date(2006,1,1)
         today = datetime.date.today()
-        
-        try:
-            query="""SHOW TABLES FROM market LIKE '%s'"""%self.ticker
-            self.curs.execute(query)
-            exists = self.curs.fetchall()
 
+        tableexists = True
+        stockexists = True
+
+        query="""SHOW TABLES FROM market LIKE '%s'"""%self.ticker
+        self.curs.execute(query)
+        exists = self.curs.fetchall()
+        if exists == ():
+            tableexists = False
+        if tableexists:
             query="""SELECT date,open,close,high,low,id from %s order by date"""%self.ticker
             self.curs.execute(query)
             self.whole = self.curs.fetchall()
             self.fh = self.whole
+        else:
+            insert = finance.quotes_historical_yahoo(self.ticker, startdate, today, adjusted=True)
+            if insert == []:
+                stockexists = False
+
+        if stockexists and not tableexists:
+            self.curs.execute("CREATE TABLE %s(id int AUTO_INCREMENT,date int,open float,close float,high float, low float, volume float, PRIMARY KEY(id))ENGINE=MYISAM;"%self.ticker)
+            query="""INSERT INTO %s(date,open,close,high,low,volume) values(%%s,%%s,%%s,%%s,%%s,%%s)"""%self.ticker
+            for row in insert:
+                self.curs.execute(query,(row[0],row[1],row[2],row[3],row[4],row[5]))
+            query="""SELECT date,open,close,high,low,id from %s order by date"""%self.ticker
+            self.curs.execute(query)
+            self.whole = self.curs.fetchall()
+            self.fh = self.whole
+            tableexists = True
+        elif not stockexists:
+            QMessageBox.information(self, "Error", "Could not find a stock with that name on Yahoo")            
+
+        if stockexists and tableexists:
             self.setup_trend()
             self.on_draw()
-        except:
-            try:
-                insert = finance.quotes_historical_yahoo(self.ticker, startdate, today, adjusted=True)
-                self.curs.execute("CREATE TABLE %s(id int AUTO_INCREMENT,date int,open float,close float,high float, low float, volume float, PRIMARY KEY(id))ENGINE=MYISAM;"%self.ticker)
-                query="""INSERT INTO %s(date,open,close,high,low,volume) values(%%s,%%s,%%s,%%s,%%s,%%s)"""%self.ticker
-                for row in insert:
-                    self.curs.execute(query,(row[0],row[1],row[2],row[3],row[4],row[5]))
-                
-                query="""SELECT date,open,close,high,low,id from %s order by date"""%self.ticker
-                self.curs.execute(query)
-                self.whole = self.curs.fetchall()
-                self.fh = self.whole
-                self.setup_trend()
-                self.on_draw()
-            except:
-                QMessageBox.information(self, "Error", "Could not find a stock with that name on Yahoo")
         
 
     def setup_trend(self):
@@ -346,7 +353,7 @@ class AppForm(QMainWindow):
 
         self.firstdatebox.setDisplayFormat('MM/yyyy')
         self.lastdatebox.setDisplayFormat('MM/yyyy')
-        self.firstdatebox.setDate(QDate.fromString('022007', 'MMyyyy'))
+        self.firstdatebox.setDate(QDate.fromString('012006', 'MMyyyy'))
         self.lastdatebox.setDate(QDate.fromString('072009', 'MMyyyy'))
 
         self.datebutton = QPushButton("&Change Dates")
