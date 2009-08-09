@@ -127,7 +127,7 @@ class AppForm(QMainWindow):
         self.fh = self.whole[firstvalue:lastvalue]
         self.setup_trend()
         self.trendline = True
-        self.textbox.setText('Press Next to start looking for trend.')
+        self.textbox.setText('Press Next to Start Looking for Trend')
         self.on_draw()
 
     def identify_trend(self):
@@ -159,14 +159,14 @@ class AppForm(QMainWindow):
         self.p2high = self.p1high
         self.diff = 0
             
-        if changeUP > 55 and not self.boolUP:
+        if changeUP > int(self.trendbox.text()) and not self.boolUP:
             self.textbox.setText('Upward trend identified. Point 1 set at %.2f'%self.fh[self.counter][3])
             self.boolUP = True
             self.incriment = True
             self.trendline = False
             self.p1arrow = True
             self.p1set = True
-        elif changeDOWN > 55 and not self.boolDOWN:
+        elif changeDOWN > int(self.trendbox.text()) and not self.boolDOWN:
             self.textbox.setText('Downward trend identified. Point 1 set at %.2f'%self.fh[self.counter][4])
             self.trendline = False
             self.p1arrow = True
@@ -424,7 +424,6 @@ class AppForm(QMainWindow):
 
         self.textbox = QLineEdit()
         self.textbox.setMinimumWidth(200)
-        self.connect(self.textbox, SIGNAL('editingFinished ()'), self.get_stock)
         
         self.draw_button = QPushButton("&Next")
         self.connect(self.draw_button, SIGNAL('clicked()'), self.trend)
@@ -458,6 +457,11 @@ class AppForm(QMainWindow):
 
         self.datebutton = QPushButton("&Change Dates")
         self.connect(self.datebutton, SIGNAL('clicked()'), self.change_dates)
+
+        self.trendbox = QLineEdit()
+        self.trendbox.setMaximumWidth(40)
+        self.trendbox.setMinimumWidth(40)
+        self.trendbox.setText('55')
         #
         # Layout with box sizers
         # 
@@ -469,7 +473,7 @@ class AppForm(QMainWindow):
             hbox.addWidget(w)
             hbox.setAlignment(w, Qt.AlignVCenter)
             
-        for y in [ self.triangle_up, self.headandshoulders ]:
+        for y in [ self.triangle_up, self.headandshoulders, self.trendbox ]:
             hbox15.addWidget(y)
             hbox15.setAlignment(y, Qt.AlignVCenter)
 
