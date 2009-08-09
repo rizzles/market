@@ -217,7 +217,6 @@ class AppForm(QMainWindow):
         #
         self.axes.clear()        
 
-        finance.candlestick(self.axes, quotes=self.fh[0:99], width=0.4, colorup='green', colordown='red')
 
         if self.trendline:
             self.axes.annotate('Start', xy=(self.fh[self.counter-30][0],self.fh[self.counter-30][3]), xytext=(-50,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->")) 
@@ -250,10 +249,27 @@ class AppForm(QMainWindow):
             self.axes.add_patch(rect)
             self.nodata = False
 
+        diff = self.fh[-1][0] - self.fh[0][0]
+
+        if diff > 200:
+            x = []
+            y = []
+            for data in self.fh:
+                x.append(data[0])
+                y.append(data[2])
+            self.axes.plot(x,y)
+            self.axes.xaxis.set_major_locator(YearLocator())
+            self.axes.xaxis.set_major_formatter(DateFormatter('%Y'))
+            self.axes.xaxis.set_minor_locator(MonthLocator())
+        else:
+            finance.candlestick(self.axes, quotes=self.fh[0:99], width=0.4, colorup='green', colordown='red')
+            self.axes.xaxis.set_major_locator(WeekdayLocator(MONDAY)) # major ticks on the mondays
+            self.axes.xaxis.set_minor_locator(DayLocator()) # minor ticks on the days
+            self.axes.xaxis.set_major_formatter(DateFormatter('%b')) # Eg, Jan 12
+
+
         self.axes.set_title('%s Daily'%self.ticker)
-        self.axes.xaxis.set_major_locator(WeekdayLocator(MONDAY)) # major ticks on the mondays
-        self.axes.xaxis.set_minor_locator(DayLocator()) # minor ticks on the days
-        self.axes.xaxis.set_major_formatter(DateFormatter('%b')) # Eg, Jan 12
+    
         #self.axes.xaxis.set_major_formatter(DateFormatter('%b %d %Y')) # Eg, Jan 12
         #self.axes.xaxis.set_major_formatter(DateFormatter('%d') # Eg, 12
         self.axes.xaxis_date()
