@@ -356,6 +356,7 @@ class AppForm(QMainWindow):
                 self.p2arrow = False
                 self.p3arrow = False
                 self.p4arrow = False
+                self.p5arrow = False
                 self.p13line = False
                 self.p24line = False
                 self.p1set = False
@@ -375,7 +376,13 @@ class AppForm(QMainWindow):
                 self.difflow = self.p2low + self.diff
                 self.p3high = self.p1high
                 self.p2arrow = True
+                self.p3arrow = False
+                self.p4arrwo = False
+                self.p5arrow = False
                 self.p2set = True
+                self.p3set = False
+                self.p4set = False
+                self.p5set = False
                 self.textbox.setText('HEAD Point 2 set at %.2f'%self.p2low)            
             elif currentHigh > self.p3high and self.p1set and self.p2set and not self.p3set:
                 self.p3high = currentHigh
@@ -401,6 +408,88 @@ class AppForm(QMainWindow):
                 self.textbox.setText('New data did nothing')
                 self.nodata = True
                 self.incriment = True
+
+        elif self.boolDOWN and self.headandshoulders.isChecked():
+#            if currentHigh > self.p1high and not self.p2set:
+            if currentLow < self.p1low and not self.p2set:
+                self.p2low = self.p1low
+                self.boolDOWN = False
+                self.boolUP = False
+                self.incriment = False
+                self.trendline = True
+                self.p1arrow = False
+                self.p2arrow = False
+                self.p3arrow = False
+                self.p4arrow = False
+                self.p5arrow = False
+                self.p13line = False
+                self.p24line = False
+                self.p1set = False
+                self.p2set = False
+                self.p3set = False
+                self.p4set = False
+                self.p5set = False
+                self.p3high = 0
+                self.p4low = 0
+                self.textbox.setText('New data is lower than Point 1. Start looking for new trend.')
+#            elif currentLow < self.p1low and currentLow < self.p2low and self.p1set:
+            elif currentHigh > self.p1high and currentHigh > self.p2high and self.p1set:
+                self.p2high = currentHigh
+                self.p2low = currentLow
+                self.p2date = currentDate
+#                self.diff = self.p1high - self.p2low
+                self.diff = self.p1high - self.p2low
+                self.diff = self.diff / 3
+                self.diffhigh = self.p1high - self.diff
+                self.difflow = self.p2low + self.diff
+                self.p3low = self.p1low
+                self.p4high = self.p4high
+                self.p2arrow = True
+                self.p3arrow = False
+                self.p4arrow = False
+                self.p5arrow = False
+                self.p2set = True
+                self.p3set = False
+                self.p4set = False
+                self.p5set = False
+                self.textbox.setText('Point 2 set at %.2f'%self.p2high)            
+#            elif currentHigh > self.p3high and self.p1set and self.p2set and not self.p3set:
+            elif currentLow < self.p3low and self.p1set and self.p2set and not self.p3set:
+                self.p3high = currentHigh
+                self.p3low = currentLow
+                self.p3date = currentDate
+                self.p3arrow = True
+                self.p4arrow = False
+                self.p5arrwo = False
+                self.p3set = True
+                self.p4set = False
+                self.p5set = False
+                self.p4high = self.p1low
+                self.textbox.setText('HEAD Point 3 set at %.2f'%self.p3low)            
+#            elif currentLow < self.p4low and self.p1set and self.p2set and self.p3set and not self.p4set:
+            elif currentHigh > self.p4high and self.p1set and self.p2set and self.p3set and not self.p4set:
+                self.p4date = currentDate
+                self.p4set = True
+                self.p5set = False
+                self.p4low = currentLow
+                self.p4high = currentHigh
+                self.p24line = True
+                self.p4arrow = True
+                self.p5arrow = False
+                self.textbox.setText('HEAD Point 4 set at %.2f'%self.p4high)            
+#            elif currentHigh > self.p1high and currentHigh < self.p3high and self.p1set and self.p2set and self.p3set and self.p4set:
+            elif currentLow < self.p1low and currentLow > self.p3low and self.p1set and self.p2set and self.p3set and self.p4set and not self.p5set:
+                self.p5high = currentHigh
+                self.p5low = currentLow
+                self.p5set = True
+                self.p5date = currentDate
+                self.p5arrow = True
+                self.textbox.setText('Point 5 set at %.2f'%self.p5low)
+            else:
+                self.textbox.setText('New data did nothing')
+                self.nodata = True
+                self.incriment = True
+
 
         self.on_draw()
 
@@ -468,6 +557,17 @@ class AppForm(QMainWindow):
             self.axes.annotate('Point 4', xy=(self.p4date,self.p4low), xytext=(0,-30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
         if self.p5arrow and self.boolUP and self.headandshoulders.isChecked():
             self.axes.annotate('Point 5', xy=(self.p5date,self.p5high), xytext=(0,30), xycoords='data', textcoords='offset points', arrowprops=dict(arrowstyle="->"))
+
+        if self.p1arrow and self.boolDOWN and self.headandshoulders.isChecked():
+            self.axes.annotate('Point 1', xy=(self.p1date,self.p1low), xytext=(-30,-30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
+        if self.p2arrow and self.boolDOWN and self.headandshoulders.isChecked():
+            self.axes.annotate('Point 2', xy=(self.p2date,self.p2high), xytext=(0,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
+        if self.p3arrow and self.boolDOWN and self.headandshoulders.isChecked():
+            self.axes.annotate('Point 3', xy=(self.p3date,self.p3low), xytext=(-30,-30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
+        if self.p4arrow and self.boolDOWN and self.headandshoulders.isChecked():
+            self.axes.annotate('Point 4', xy=(self.p4date,self.p4high), xytext=(0,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))             
+        if self.p5arrow and self.boolDOWN and self.headandshoulders.isChecked():
+            self.axes.annotate('Point 5', xy=(self.p5date,self.p5low), xytext=(-10,-30), xycoords='data', textcoords='offset points', arrowprops=dict(arrowstyle="->"))
 
         if self.p13line and self.boolUP and self.triangle.isChecked():
             line1 = Line2D(xdata=[self.p1date,self.p3date], ydata=[self.p1high,self.p3high],color='b',linewidth=1.0,antialiased=True,)        
