@@ -251,7 +251,7 @@ class AppForm(QMainWindow):
 #            elif self.fh[self.counter][4] < self.p1low and self.fh[self.counter][4] < self.p2low:
             elif currentLow < self.p1low and currentLow < self.p2low:
                 self.p2date = currentDate
-                self.p2low = self.fh[self.counter][4]
+                self.p2low = currentLow
                 self.diff = self.p1high - self.p2low
                 self.diff = self.diff / 3
                 self.diffhigh = self.p1high - self.diff
@@ -264,19 +264,19 @@ class AppForm(QMainWindow):
                 self.p3set = False
                 self.p4set = False
                 self.textbox.setText('Point 2 set at %.2f'%self.p2low)
-            elif self.p2low < self.p1low and self.fh[self.counter][3] > self.diffhigh and self.fh[self.counter][3] > self.p3high:
-                self.p3date = self.fh[self.counter][0]
+            elif self.p2low < self.p1low and currentHigh > self.diffhigh and currentHigh > self.p3high:
+                self.p3date = currentDate
                 self.incriment = True
-                self.p3high = self.fh[self.counter][3]
-                self.p4low = self.fh[self.counter][4]
+                self.p3high = currentHigh
+                self.p4low = currentLow
                 self.p3arrow = True
                 self.p13line = True
                 self.p3set = True
                 self.p4set = False
                 self.textbox.setText('Point 3 set at %.2f'%self.p3high)
-            elif self.p2set and self.p3set and self.fh[self.counter][4] < self.difflow and self.fh[self.counter][4] < self.p4low:
-                self.p4date = self.fh[self.counter][0]
-                self.p4low = self.fh[self.counter][4]
+            elif self.p2set and self.p3set and currentLow < self.difflow and currentLow < self.p4low:
+                self.p4date = currentDate
+                self.p4low = currentLow
                 self.p4arrow = True
                 self.p24line = True
                 self.incriment = False
@@ -286,7 +286,7 @@ class AppForm(QMainWindow):
                 self.nodata = True
 
         elif self.boolDOWN and self.triangle.isChecked():
-            if self.fh[self.counter][4] < self.p1low:
+            if currentLow < self.p1low:
                 self.p2high = self.p1high
                 self.boolDOWN = False
                 self.boolUP = False
@@ -305,9 +305,9 @@ class AppForm(QMainWindow):
                 self.p3low = 0
                 self.p4high = 0
                 self.textbox.setText('New data is lower than Point 1. Start looking for new trend.')
-            elif self.fh[self.counter][3] > self.p1high and self.fh[self.counter][3] > self.p2high:
-                self.p2date = self.fh[self.counter][0]
-                self.p2high = self.fh[self.counter][3]
+            elif currentHigh > self.p1high and currentHigh > self.p2high:
+                self.p2date = currentDate
+                self.p2high = currentHigh
                 self.diff = self.p2high - self.p1low
                 self.diff = self.diff / 3
                 self.diffhigh = self.p2high - self.diff
@@ -322,20 +322,20 @@ class AppForm(QMainWindow):
                 self.p3set = False
                 self.p4set = False
                 self.textbox.setText('Point 2 set at %.2f'%self.p2high)
-            elif self.p2high > self.p1high and self.fh[self.counter][4] < self.difflow and self.fh[self.counter][4] < self.p3low:
-                self.p3date = self.fh[self.counter][0]
+            elif self.p2high > self.p1high and currentLow < self.difflow and currentLow < self.p3low:
+                self.p3date = currentDate
                 self.incriment = True
-                self.p3low = self.fh[self.counter][4]
-                self.p4high = self.fh[self.counter][3]
+                self.p3low = currentLow
+                self.p4high = currentHigh
                 self.p3arrow = True
                 self.p13line = True
                 self.p2set = True
                 self.p3set = True
                 self.p4set = False
                 self.textbox.setText('Point 3 set at %.2f'%self.p3low)
-            elif self.p2set and self.p3set and self.fh[self.counter][3] > self.diffhigh and self.fh[self.counter][3] > self.p4high:
-                self.p4date = self.fh[self.counter][0]
-                self.p4high = self.fh[self.counter][3]
+            elif self.p2set and self.p3set and currentHigh > self.diffhigh and currentHigh > self.p4high:
+                self.p4date = currentDate
+                self.p4high = currentHigh
                 self.p4arrow = True
                 self.p24line = True
                 self.incriment = False
@@ -346,7 +346,7 @@ class AppForm(QMainWindow):
                 self.incriment = True
 
         elif self.boolUP and self.headandshoulders.isChecked():
-            if self.fh[self.counter][3] > self.p1high and not self.p2set:
+            if currentHigh > self.p1high and not self.p2set:
                 self.p2low = self.p1low
                 self.boolDOWN = False
                 self.boolUP = False
@@ -366,9 +366,9 @@ class AppForm(QMainWindow):
                 self.p3high = 0
                 self.p4low = 0
                 self.textbox.setText('New data is higher than Point 1. Start looking for new trend. HeadandShoulders')
-            elif self.fh[self.counter][4] < self.p1low and self.fh[self.counter][4] < self.p2low and self.p1set:
-                self.p2low = self.fh[self.counter][4]
-                self.p2date = self.fh[self.counter][0]
+            elif currentLow < self.p1low and currentLow < self.p2low and self.p1set:
+                self.p2low = currentLow
+                self.p2date = currentDate
                 self.diff = self.p1high - self.p2low
                 self.diff = self.diff / 3
                 self.diffhigh = self.p1high - self.diff
@@ -377,24 +377,24 @@ class AppForm(QMainWindow):
                 self.p2arrow = True
                 self.p2set = True
                 self.textbox.setText('HEAD Point 2 set at %.2f'%self.p2low)            
-            elif self.fh[self.counter][3] > self.p3high and self.p1set and self.p2set and not self.p3set:
-                self.p3high = self.fh[self.counter][3]
-                self.p3date = self.fh[self.counter][0]
+            elif currentHigh > self.p3high and self.p1set and self.p2set and not self.p3set:
+                self.p3high = currentHigh
+                self.p3date = currentDate
                 self.p3arrow = True
                 self.p3set = True
                 self.p4low = self.p1high
                 self.textbox.setText('HEAD Point 3 set at %.2f'%self.p3high)            
-            elif self.fh[self.counter][4] < self.p4low and self.p1set and self.p2set and self.p3set and not self.p4set:
-                self.p4date = self.fh[self.counter][0]
+            elif currentLow < self.p4low and self.p1set and self.p2set and self.p3set and not self.p4set:
+                self.p4date = currentDate
                 self.p4set = True
-                self.p4low = self.fh[self.counter][4]
+                self.p4low = currentLow
                 self.p24line = True
                 self.p4arrow = True
                 self.textbox.setText('HEAD Point 4 set at %.2f'%self.p4low)            
-            elif self.fh[self.counter][3] > self.p1high and self.fh[self.counter][3] < self.p3high and self.p1set and self.p2set and self.p3set and self.p4set:
-                self.p5high = self.fh[self.counter][3]
+            elif currentHigh > self.p1high and currentHigh < self.p3high and self.p1set and self.p2set and self.p3set and self.p4set:
+                self.p5high = currentHigh
                 self.p5set = True
-                self.p5date = self.fh[self.counter][0]
+                self.p5date = currentDate
                 self.p5arrow = True
                 self.textbox.setText('Point 5 set at %.2f'%self.p5high)
             else:
