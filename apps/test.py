@@ -109,6 +109,37 @@ class AppForm(QMainWindow):
         self.p24line = False
         self.nodata = False
 
+    def reset_trend(self):
+        self.boolUP = False
+        self.boolDOWN = False
+        self.p1date = 0
+        self.p1high = 0
+        self.p1low = 0
+        self.p2date = 0
+        self.p2high = 0
+        self.p2low = 0
+        self.p3date = 0
+        self.p3high = 0
+        self.p3low = 0
+        self.p4date = 0
+        self.p4high = 0
+        self.p4low = 0
+        self.p1set = False
+        self.p2set = False
+        self.p3set = False
+        self.p4set = False
+        self.diff = 0
+        self.incriment = False
+        self.p1arrow = False
+        self.p2arrow = False
+        self.p3arrow = False
+        self.p4arrow = False
+        self.trendline = True
+        self.p13line = False
+        self.p24line = False
+        self.nodata = False
+
+
     def change_dates(self):
         temp =  self.firstdatebox.date()
         t1 = datetime.datetime(temp.year(), temp.month(), temp.day())
@@ -194,6 +225,10 @@ class AppForm(QMainWindow):
                 self.p4arrow = False
                 self.p13line = False
                 self.p24line = False
+                self.p1set = False
+                self.p2set = False
+                self.p3set = False
+                self.p4set = False
                 self.p3high = 0
                 self.p4low = 0
                 self.textbox.setText('New data is higher than Point 1. Start looking for new trend.')
@@ -208,6 +243,9 @@ class AppForm(QMainWindow):
                 self.p2arrow = True
                 self.p3arrow = False
                 self.p13line = False
+                self.p2set = True
+                self.p3set = False
+                self.p4set = False
                 self.textbox.setText('Point 2 set at %.2f'%self.p2low)
             elif self.p2low < self.p1low and self.fh[self.counter][3] > self.diffhigh and self.fh[self.counter][3] > self.p3high:
                 self.p3date = self.fh[self.counter][0]
@@ -216,8 +254,10 @@ class AppForm(QMainWindow):
                 self.p4low = self.fh[self.counter][4]
                 self.p3arrow = True
                 self.p13line = True
+                self.p3set = True
+                self.p4set = False
                 self.textbox.setText('Point 3 set at %.2f'%self.p3high)
-            elif self.p2low > 0 and self.p3high > 0 and self.fh[self.counter][4] < self.difflow and self.fh[self.counter][4] < self.p4low:
+            elif self.p2set and self.p3set and self.fh[self.counter][4] < self.difflow and self.fh[self.counter][4] < self.p4low:
                 self.p4date = self.fh[self.counter][0]
                 self.p4low = self.fh[self.counter][4]
                 self.p4arrow = True
@@ -388,8 +428,7 @@ class AppForm(QMainWindow):
         self.canvas.draw()
 
         if self.p24line:
-            self.boolUP = False
-            self.boolDOWN = False
+            self.reset_trend()
 
         if self.incriment:
             self.counter += 1
