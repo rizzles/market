@@ -20,7 +20,7 @@ import datetime
 class AppForm(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
-        self.version = "14"
+        self.version = "20"
         self.setWindowTitle('Daily Chart')
 
         self.setup_dbase()
