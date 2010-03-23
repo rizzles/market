@@ -32,7 +32,7 @@ class AppForm(QMainWindow):
 
     def setup_dbase(self):
         self.ticker = 'MSFT'
-        self.db = MySQLdb.connect(host='166.70.159.134', user='nick', passwd='mohair94', db='market')
+        self.db = MySQLdb.connect(host='166.70.159.135', user='nick', passwd='mohair94', db='market')
         self.curs = self.db.cursor()
 
     def get_stock(self):
