@@ -20,13 +20,16 @@ import datetime
 class AppForm(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
-        self.version = "20"
+        self.version = "21"
         self.setWindowTitle('Daily Chart')
 
         self.setup_dbase()
         self.create_menu()
         self.create_main_frame()
         self.create_status_bar()
+
+        # Set variable we can check against later
+        self.whole = 0
 
         self.textbox.setText('Press Next to Start Looking for Trend')
 
@@ -77,6 +80,11 @@ class AppForm(QMainWindow):
         
 
     def setup_trend(self):
+        try:
+            temp = self.fh[0]
+        except:
+            QMessageBox.information(self, "Error", "Those dates are out of range.")
+            return
         self.counter = 30
         self.pot = 30.0
         self.lastDay = self.fh[0]
@@ -113,6 +121,8 @@ class AppForm(QMainWindow):
         self.p13line = False
         self.p24line = False
         self.nodata = False
+        self.daysoftrend = 0
+        self.maxdays = 10
 
     def reset_trend(self):
         self.boolUP = False
@@ -148,9 +158,14 @@ class AppForm(QMainWindow):
         self.p13line = False
         self.p24line = False
         self.nodata = False
+        self.daysoftrend = 0
 
 
     def change_dates(self):
+        # Throw error if stock is not loaded
+        if self.whole == 0:
+            QMessageBox.information(self, "Error", "You must load a stock in before changing dates")
+            return                        
         temp =  self.firstdatebox.date()
         t1 = datetime.datetime(temp.year(), temp.month(), temp.day())
         t2 = int(date2num(t1))
@@ -165,7 +180,11 @@ class AppForm(QMainWindow):
             if t2 <= row[0]:
                 lastvalue = row[5]
                 break
-        self.fh = self.whole[firstvalue:lastvalue]
+        try:
+            self.fh = self.whole[firstvalue:lastvalue]
+        except:
+            QMessageBox.information(self, "Error", "The dates are out of range")
+            return
         self.setup_trend()
         self.trendline = True
         self.textbox.setText('Press Next to Start Looking for Trend')
@@ -219,17 +238,29 @@ class AppForm(QMainWindow):
             self.incriment = True
 
     def trend(self):
+        try:
+            currentDate = self.fh[self.counter][0]
+        except:
+            QMessageBox.information(self, "Error", "You've reached the end of the graph. Redo the dates.")
+            return      
         currentDate = self.fh[self.counter][0]
         currentClose = self.fh[self.counter][2]
         currentHigh = self.fh[self.counter][3]
         currentLow = self.fh[self.counter][4]
 
+        # No trend identified
         if not self.boolUP and not self.boolDOWN:
+            self.daysoftrend = 0
             self.identify_trend()
 
+        # Triangle with a upward trend
         elif self.boolUP and self.triangle.isChecked():
-#            if self.fh[self.counter][3] > self.p1high:
-            if currentHigh > self.p1high:
+            # Add check into break out of loop if excede max number of days
+            self.daysoftrend += 1
+            if self.daysoftrend >= self.maxdays:
+                QMessageBox.information(self, "Error", "Trend exceded maximum number of days")
+                self.reset_trend()
+            elif currentHigh > self.p1high:
                 self.p2low = self.p1low
                 self.boolDOWN = False
                 self.boolUP = False
@@ -247,8 +278,7 @@ class AppForm(QMainWindow):
                 self.p4set = False
                 self.p3high = 0
                 self.p4low = 0
-                self.textbox.setText('New data is higher than Point 1. Start looking for new trend.')
-#            elif self.fh[self.counter][4] < self.p1low and self.fh[self.counter][4] < self.p2low:
+                self.textbox.setText('New data is higher than Point 1. Starting to look for new trend.')
             elif currentLow < self.p1low and currentLow < self.p2low:
                 self.p2date = currentDate
                 self.p2low = currentLow
@@ -263,6 +293,7 @@ class AppForm(QMainWindow):
                 self.p2set = True
                 self.p3set = False
                 self.p4set = False
+                self.daysoftrend = 0
                 self.textbox.setText('Point 2 set at %.2f'%self.p2low)
             elif self.p2low < self.p1low and currentHigh > self.diffhigh and currentHigh > self.p3high:
                 self.p3date = currentDate
@@ -273,6 +304,7 @@ class AppForm(QMainWindow):
                 self.p13line = True
                 self.p3set = True
                 self.p4set = False
+                self.daysoftrend = 0
                 self.textbox.setText('Point 3 set at %.2f'%self.p3high)
             elif self.p2set and self.p3set and currentLow < self.difflow and currentLow < self.p4low:
                 self.p4date = currentDate
@@ -280,13 +312,20 @@ class AppForm(QMainWindow):
                 self.p4arrow = True
                 self.p24line = True
                 self.incriment = False
+                self.daysoftrend = 0
                 self.textbox.setText('Point 4 set at %.2f'%self.p4low)
             else:
                 self.textbox.setText('New data did nothing')
                 self.nodata = True
 
+        # Triangle with a downward trend
         elif self.boolDOWN and self.triangle.isChecked():
-            if currentLow < self.p1low:
+            # Add check into break out of loop if excede max number of days
+            self.daysoftrend += 1
+            if self.daysoftrend >= self.maxdays:
+                QMessageBox.information(self, "Error", "Trend exceded maximum number of days")
+                self.reset_trend()
+            elif currentLow < self.p1low:
                 self.p2high = self.p1high
                 self.boolDOWN = False
                 self.boolUP = False
@@ -321,6 +360,7 @@ class AppForm(QMainWindow):
                 self.p2set = True
                 self.p3set = False
                 self.p4set = False
+                self.daysoftrend = 0
                 self.textbox.setText('Point 2 set at %.2f'%self.p2high)
             elif self.p2high > self.p1high and currentLow < self.difflow and currentLow < self.p3low:
                 self.p3date = currentDate
@@ -332,6 +372,7 @@ class AppForm(QMainWindow):
                 self.p2set = True
                 self.p3set = True
                 self.p4set = False
+                self.daysoftrend = 0
                 self.textbox.setText('Point 3 set at %.2f'%self.p3low)
             elif self.p2set and self.p3set and currentHigh > self.diffhigh and currentHigh > self.p4high:
                 self.p4date = currentDate
@@ -339,12 +380,14 @@ class AppForm(QMainWindow):
                 self.p4arrow = True
                 self.p24line = True
                 self.incriment = False
+                self.daysoftrend = 0
                 self.textbox.setText('Point 4 set at %.2f'%self.p4high)
             else:
                 self.textbox.setText('New data did nothing')
                 self.nodata = True
                 self.incriment = True
 
+        # Head and Shoulders trend with an upward trend
         elif self.boolUP and self.headandshoulders.isChecked():
             if currentHigh > self.p1high and not self.p2set:
                 self.p2low = self.p1low
@@ -383,6 +426,7 @@ class AppForm(QMainWindow):
                 self.p3set = False
                 self.p4set = False
                 self.p5set = False
+                self.daysoftrend = 0
                 self.textbox.setText('HEAD Point 2 set at %.2f'%self.p2low)            
             elif currentHigh > self.p3high and self.p1set and self.p2set and not self.p3set:
                 self.p3high = currentHigh
@@ -390,6 +434,7 @@ class AppForm(QMainWindow):
                 self.p3arrow = True
                 self.p3set = True
                 self.p4low = self.p1high
+                self.daysoftrend = 0
                 self.textbox.setText('HEAD Point 3 set at %.2f'%self.p3high)            
             elif currentLow < self.p4low and self.p1set and self.p2set and self.p3set and not self.p4set:
                 self.p4date = currentDate
@@ -397,18 +442,21 @@ class AppForm(QMainWindow):
                 self.p4low = currentLow
                 self.p24line = True
                 self.p4arrow = True
+                self.daysoftrend = 0
                 self.textbox.setText('HEAD Point 4 set at %.2f'%self.p4low)            
             elif currentHigh > self.p1high and currentHigh < self.p3high and self.p1set and self.p2set and self.p3set and self.p4set:
                 self.p5high = currentHigh
                 self.p5set = True
                 self.p5date = currentDate
                 self.p5arrow = True
+                self.daysoftrend = 0
                 self.textbox.setText('Point 5 set at %.2f'%self.p5high)
             else:
                 self.textbox.setText('New data did nothing')
                 self.nodata = True
                 self.incriment = True
 
+        # Head and shoulders with downward trend
         elif self.boolDOWN and self.headandshoulders.isChecked():
 #            if currentHigh > self.p1high and not self.p2set:
             if currentLow < self.p1low and not self.p2set:
@@ -452,6 +500,7 @@ class AppForm(QMainWindow):
                 self.p3set = False
                 self.p4set = False
                 self.p5set = False
+                self.daysoftrend = 0
                 self.textbox.setText('Point 2 set at %.2f'%self.p2high)            
 #            elif currentHigh > self.p3high and self.p1set and self.p2set and not self.p3set:
             elif currentLow < self.p3low and self.p1set and self.p2set and not self.p3set:
@@ -465,6 +514,7 @@ class AppForm(QMainWindow):
                 self.p4set = False
                 self.p5set = False
                 self.p4high = self.p1low
+                self.daysoftrend = 0
                 self.textbox.setText('HEAD Point 3 set at %.2f'%self.p3low)            
 #            elif currentLow < self.p4low and self.p1set and self.p2set and self.p3set and not self.p4set:
             elif currentHigh > self.p4high and self.p1set and self.p2set and self.p3set and not self.p4set:
@@ -476,6 +526,7 @@ class AppForm(QMainWindow):
                 self.p24line = True
                 self.p4arrow = True
                 self.p5arrow = False
+                self.daysoftrend = 0
                 self.textbox.setText('HEAD Point 4 set at %.2f'%self.p4high)            
 #            elif currentHigh > self.p1high and currentHigh < self.p3high and self.p1set and self.p2set and self.p3set and self.p4set:
             elif currentLow < self.p1low and currentLow > self.p3low and self.p1set and self.p2set and self.p3set and self.p4set and not self.p5set:
@@ -484,6 +535,7 @@ class AppForm(QMainWindow):
                 self.p5set = True
                 self.p5date = currentDate
                 self.p5arrow = True
+                self.daysoftrend = 0
                 self.textbox.setText('Point 5 set at %.2f'%self.p5low)
             else:
                 self.textbox.setText('New data did nothing')
@@ -500,9 +552,11 @@ class AppForm(QMainWindow):
         # clear the axes and redraw the plot anew
         #
         self.axes.clear()        
-
-        diff = self.fh[-1][0] - self.fh[0][0]
-
+        try:
+            diff = self.fh[-1][0] - self.fh[0][0]
+        except:
+            return
+        
         if diff > 180:
             x = []
             y = []
@@ -623,7 +677,7 @@ class AppForm(QMainWindow):
         # Create the mpl Figure and FigCanvas objects. 
         # 7x6 inches, 100 dots-per-inch
         #
-        self.dpi = 100
+        self.dpi = 200
         self.fig = Figure((7.0, 7.0), dpi=self.dpi)
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setParent(self.main_frame)
@@ -662,7 +716,7 @@ class AppForm(QMainWindow):
         self.headandshoulders.setChecked(False)
         #self.connect(self.headandshoulders, SIGNAL('stateChanged(int)'), self.on_draw)
 
-        slider_label = QLabel('Percent of Trend (%):')
+        self.slider_label = QLabel('Percent of Trend (%):')
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setRange(1, 100)
         self.slider.setValue(55)
@@ -685,6 +739,7 @@ class AppForm(QMainWindow):
         self.trendbox.setMaximumWidth(40)
         self.trendbox.setMinimumWidth(40)
         self.trendbox.setText('55')
+                                  
         #
         # Layout with box sizers
         # 
@@ -699,6 +754,7 @@ class AppForm(QMainWindow):
         for y in [ self.triangle, self.headandshoulders, self.trendbox ]:
             hbox15.addWidget(y)
             hbox15.setAlignment(y, Qt.AlignVCenter)
+            
 
         for x in [ self.textbox, self.draw_button ]:
             hbox2.addWidget(x)
