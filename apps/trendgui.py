@@ -20,7 +20,7 @@ import datetime
 class AppForm(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
-        self.version = "21"
+        self.version = "22"
         self.setWindowTitle('Daily Chart')
 
         self.setup_dbase()
@@ -428,6 +428,7 @@ class AppForm(QMainWindow):
                 self.p5set = False
                 self.daysoftrend = 0
                 self.textbox.setText('HEAD Point 2 set at %.2f'%self.p2low)            
+            # Set point 3
             elif currentHigh > self.p3high and self.p1set and self.p2set and not self.p3set:
                 self.p3high = currentHigh
                 self.p3date = currentDate
@@ -435,7 +436,18 @@ class AppForm(QMainWindow):
                 self.p3set = True
                 self.p4low = self.p1high
                 self.daysoftrend = 0
-                self.textbox.setText('HEAD Point 3 set at %.2f'%self.p3high)            
+                self.textbox.setText('HEAD Point 3 set at %.2f'%self.p3high)
+
+#           Test against point 3 to see if point it higher than the current point 3
+            elif currentLow > self.p3high and self.p1set and self.p2set and self.p3set:
+                self.p3high = currentHigh
+                self.p3date = currentDate
+                self.p3arrow = True
+                self.p3set = True
+                self.p4low = self.p1high
+                self.daysoftrend = 0
+                self.textbox.setText('HEAD Point 3 set at %.2f'%self.p3high)
+            # Set point 4
             elif currentLow < self.p4low and self.p1set and self.p2set and self.p3set and not self.p4set:
                 self.p4date = currentDate
                 self.p4set = True
@@ -502,7 +514,7 @@ class AppForm(QMainWindow):
                 self.p5set = False
                 self.daysoftrend = 0
                 self.textbox.setText('Point 2 set at %.2f'%self.p2high)            
-#            elif currentHigh > self.p3high and self.p1set and self.p2set and not self.p3set:
+#           Set point 3
             elif currentLow < self.p3low and self.p1set and self.p2set and not self.p3set:
                 self.p3high = currentHigh
                 self.p3low = currentLow
@@ -516,7 +528,21 @@ class AppForm(QMainWindow):
                 self.p4high = self.p1low
                 self.daysoftrend = 0
                 self.textbox.setText('HEAD Point 3 set at %.2f'%self.p3low)            
-#            elif currentLow < self.p4low and self.p1set and self.p2set and self.p3set and not self.p4set:
+#           Test against point 3 to see if point it lower than the current point 3
+            elif currentLow < self.p3low and self.p1set and self.p2set and self.p3set:
+                self.p3high = currentHigh
+                self.p3low = currentLow
+                self.p3date = currentDate
+                self.p3arrow = True
+                self.p4arrow = False
+                self.p5arrwo = False
+                self.p3set = True
+                self.p4set = False
+                self.p5set = False
+                self.p4high = self.p1low
+                self.daysoftrend = 0
+                self.textbox.setText('HEAD Point 3 set at %.2f'%self.p3low)   
+#           Set point 4
             elif currentHigh > self.p4high and self.p1set and self.p2set and self.p3set and not self.p4set:
                 self.p4date = currentDate
                 self.p4set = True
