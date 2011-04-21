@@ -18,11 +18,12 @@ import MySQLdb
 import datetime
 
 TRENDRATE = 55
+DAYS = 30
 
 class AppForm(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
-        self.version = "1.00"
+        self.version = "1.10"
         self.setWindowTitle('Daily Chart')
 
         self.setup_dbase()
@@ -68,6 +69,16 @@ class AppForm(QMainWindow):
         self.stockbox.setMinimumWidth(100)
         self.stockbox.setMaximumWidth(100)
 
+        self.trendlengthbox = QLineEdit()
+        self.trendlengthbox.setMinimumWidth(35)
+        self.trendlengthbox.setMaximumWidth(35)
+        self.trendlengthbox.setText(QString(str(DAYS)))
+
+        self.percentbox = QLineEdit()
+        self.percentbox.setMinimumWidth(35)
+        self.percentbox.setMaximumWidth(35)
+        self.percentbox.setText(QString(str(TRENDRATE)))
+
         self.textbox = QLineEdit()
         self.textbox.setMinimumWidth(200)
         
@@ -76,6 +87,7 @@ class AppForm(QMainWindow):
         
         self.stockbutton = QPushButton("&Get Stock")
         self.connect(self.stockbutton, SIGNAL('clicked()'), self.get_stock)
+        self.connect(self.stockbox, SIGNAL('returnPressed()'), self.get_stock)
 
         self.triangle = QCheckBox("Triangle")
         self.triangle.setChecked(True)
@@ -98,12 +110,13 @@ class AppForm(QMainWindow):
         # 
         hbox = QHBoxLayout()
         hbox12 = QHBoxLayout()
+        hbox13 = QHBoxLayout()
         hbox15 = QHBoxLayout()
         hbox2 = QHBoxLayout()
         spacerItem1 = QSpacerItem(0, 50, QSizePolicy.Expanding, QSizePolicy.Minimum)
        
         label = QLabel()
-        label.setText("Step 1: Enter Stock Ticker Symbol from Yahoo")
+        label.setText("Step 1: Enter Ticker Symbol from Yahoo       ")
         hbox.addWidget(label)
         for w in [  self.stockbox, self.stockbutton ]:
             hbox.addWidget(w)
@@ -111,20 +124,31 @@ class AppForm(QMainWindow):
         hbox.addItem(spacerItem1)
 
         label = QLabel()
-        label.setText("Step 2: Enter Date to Focus On               ")
-        hbox12.addWidget(label)
-        for w in [self.firstdatebox, self.datebutton]:
-            hbox12.addWidget(w)
-            hbox.setAlignment(w, Qt.AlignVCenter)
-        hbox12.addItem(spacerItem1)
-        
-        label = QLabel()
-        label.setText("Step 3: Choose Which Trend to Watch For      ")
+        label.setText("Step 2: Choose Which Trend to Watch For      ")
         hbox15.addWidget(label)
         for y in [ self.triangle, self.headandshoulders ]:
             hbox15.addWidget(y)
             hbox15.setAlignment(y, Qt.AlignVCenter)
         hbox15.addItem(spacerItem1)
+
+        label = QLabel()
+        label.setText("Step 3 (optional): Set Number of Ticks to Watch for Trend  ")
+        hbox13.addWidget(label)
+        hbox13.addWidget(self.trendlengthbox)
+        label = QLabel()
+        label.setText("             Set Percent of Change in Ticks to Start Looking for Trend  ")
+        hbox13.addWidget(label)
+        hbox13.addWidget(self.percentbox)
+        hbox13.addItem(spacerItem1)
+
+        label = QLabel()
+        label.setText("Step 4: Enter Date to Focus On           ")
+        hbox12.addWidget(label)
+        for w in [self.firstdatebox, self.datebutton]:
+            hbox12.addWidget(w)
+            hbox12.setAlignment(w, Qt.AlignVCenter)
+        hbox12.addItem(spacerItem1)
+
         
         for x in [ self.textbox, self.draw_button ]:
             hbox2.addWidget(x)
@@ -134,8 +158,9 @@ class AppForm(QMainWindow):
         vbox = QVBoxLayout()
         vbox.addWidget(self.canvas)
         vbox.addLayout(hbox)
-        vbox.addLayout(hbox12)
         vbox.addLayout(hbox15)
+        vbox.addLayout(hbox13)
+        vbox.addLayout(hbox12)
         vbox.addLayout(hbox2)
         
         self.main_frame.setLayout(vbox)
@@ -206,12 +231,16 @@ class AppForm(QMainWindow):
             self.on_draw()       
 
     def setup_trend(self):
+        DAYS = int(self.trendlengthbox.text())
+        TRENDRATE = int(self.percentbox.text())
         try:
             temp = self.fh[0]
         except:
             QMessageBox.information(self, "Error", "Those dates are out of range.")
             return
-        self.counter = 30
+        self.trianglefound = False
+        self.headfound = False
+        self.counter = DAYS
         self.pot = 30.0
         self.lastDay = self.fh[0]
         self.boolUP = False
@@ -251,6 +280,10 @@ class AppForm(QMainWindow):
         self.maxdays = 10
 
     def reset_trend(self):
+        DAYS = int(self.trendlengthbox.text())
+        TRENDRATE = int(self.percentbox.text())
+        self.trianglefound = False
+        self.headfound = False
         self.boolUP = False
         self.boolDOWN = False
         self.p1date = 0
@@ -319,6 +352,9 @@ class AppForm(QMainWindow):
         self.on_draw()
 
     def identify_trend(self):
+        DAYS = int(self.trendlengthbox.text())
+        TRENDRATE = int(self.percentbox.text())
+        self.pot = float(DAYS)
         self.p1arrow = False
         self.p2arrow = False
         self.p3arrow = False
@@ -328,7 +364,7 @@ class AppForm(QMainWindow):
         self.p24line = False
         up = 0 
         down = 0
-        for row in range(self.counter-29,self.counter+1):
+        for row in range(self.counter-(DAYS-1),self.counter+1):
             if self.fh[row][2] > self.lastDay[2]:
                 up += 1
             else:
@@ -447,7 +483,8 @@ class AppForm(QMainWindow):
                 self.incriment = False
                 self.daysoftrend = 0
                 self.textbox.setText('Point 4 set at %.2f'%self.p4low)
-                QMessageBox.information(self, "Alert", "Triangle Found. Program would alert you")                    
+                self.trianglefound = True
+                   
             else:
                 self.textbox.setText('New data did nothing')
                 self.nodata = True
@@ -516,7 +553,7 @@ class AppForm(QMainWindow):
                 self.incriment = False
                 self.daysoftrend = 0
                 self.textbox.setText('Point 4 set at %.2f'%self.p4high)
-                QMessageBox.information(self, "Alert", "Triangle Found. Program would alert you")                
+                self.trianglefound = True               
             else:
                 self.textbox.setText('New data did nothing')
                 self.nodata = True
@@ -598,7 +635,7 @@ class AppForm(QMainWindow):
                 self.p5arrow = True
                 self.daysoftrend = 0
                 self.textbox.setText('Point 5 set at %.2f'%self.p5high)
-                QMessageBox.information(self, "Alert", "Head and Shoulders Found. Program would alert you")                
+                self.headfound = True               
             else:
                 self.textbox.setText('New data did nothing')
                 self.nodata = True
@@ -699,7 +736,7 @@ class AppForm(QMainWindow):
                 self.p5arrow = True
                 self.daysoftrend = 0
                 self.textbox.setText('Point 5 set at %.2f'%self.p5low)
-                QMessageBox.information(self, "Alert", "Head and Shoulders Found. Program would alert you")
+                self.headfound = True
             else:
                 self.textbox.setText('New data did nothing')
                 self.nodata = True
@@ -708,6 +745,8 @@ class AppForm(QMainWindow):
         self.on_draw()
 
     def on_draw(self):
+        DAYS = int(self.trendlengthbox.text())
+        TRENDRATE = int(self.percentbox.text())
         # clear the axes and redraw the plot anew
         #
         self.axes.clear()        
@@ -738,7 +777,7 @@ class AppForm(QMainWindow):
             self.axes.xaxis.set_major_formatter(DateFormatter('%b %d')) # Eg, Jan 12
 
         if self.trendline:
-            self.axes.annotate('Start', xy=(self.fh[self.counter-30][0],self.fh[self.counter-30][3]), xytext=(-50,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->")) 
+            self.axes.annotate('Start', xy=(self.fh[self.counter-DAYS][0],self.fh[self.counter-DAYS][3]), xytext=(-50,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->")) 
             self.axes.annotate('End', xy=(self.fh[self.counter][0],self.fh[self.counter][3]), xytext=(-50,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))         
 
         if self.p1arrow and self.boolUP and self.triangle.isChecked():
@@ -820,12 +859,18 @@ class AppForm(QMainWindow):
         
         self.canvas.draw()
 
+        if self.trianglefound:
+            QMessageBox.information(self, "Alert", "Triangle Trend Found.")
+
+        if self.headfound:            
+            QMessageBox.information(self, "Alert", "Head and Shoulders Trend Found.")
+            
         if self.p24line and self.triangle.isChecked():
             self.reset_trend()
 
         if self.p5set and self.headandshoulders.isChecked():
             self.reset_trend()
-
+            
         if self.incriment:
             self.counter += 1
     
