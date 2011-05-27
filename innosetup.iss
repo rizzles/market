@@ -1,6 +1,6 @@
 [Setup]
 AppName=Market
-AppVerName=Market v1.0
+AppVerName=Market v1.40
 DefaultDirName={pf}\Market
 DefaultGroupName=Market
 UninstallDisplayIcon={app}\Market.exe
