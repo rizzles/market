@@ -23,7 +23,7 @@ DAYS = 30
 class AppForm(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
-        self.version = "1.50"
+        self.version = "1.60"
         self.setWindowTitle('Daily Chart')
 
         self.setup_dbase()
@@ -269,6 +269,8 @@ class AppForm(QMainWindow):
         self.p4set = False
         self.p5set = False
         self.diff = 0
+        self.diffhigh = 0
+        self.difflow = 0
         self.incriment = False
         self.p1arrow = False
         self.p2arrow = False
@@ -310,6 +312,8 @@ class AppForm(QMainWindow):
         self.p4set = False
         self.p5set = False
         self.diff = 0
+        self.diffhigh = 0
+        self.difflow = 0
         self.incriment = False
         self.p1arrow = False
         self.p2arrow = False
@@ -389,7 +393,7 @@ class AppForm(QMainWindow):
         self.p1low = self.lastDay[4]
         self.p2low = self.p1low
         self.p2high = self.p1high
-        self.diff = 0
+
             
         if changeUP > TRENDRATE and not self.boolUP:
             self.textbox.setText('Upward trend identified. Point 1 set at %.2f'%self.fh[self.counter][3])
@@ -675,6 +679,11 @@ class AppForm(QMainWindow):
                 self.p4low = currentLow
                 self.p24line = True
                 self.p4arrow = True
+
+                self.diff = self.p3high - self.p2low
+                self.diff = self.diff /2
+                self.diffhigh = self.p3high - self.diff
+                
                 self.daysoftrend = 0
                 self.textbox.setText('HEAD Point 4 set at %.2f'%self.p4low)            
 
@@ -690,9 +699,9 @@ class AppForm(QMainWindow):
                 self.p5arrow = False
                 self.daysoftrend = 0
                 self.textbox.setText('HEAD Reset Point 4 set at %.2f'%self.p4high)
-                
-            # set point 5
-            elif currentHigh > self.p1high and currentHigh < self.p3high and self.p1set and self.p2set and self.p3set and self.p4set:
+
+            # set new point 5
+            elif currentHigh > self.diffhigh and self.p1set and self.p2set and self.p3set and self.p4set and not self.p5set:
                 self.p5high = currentHigh
                 self.p5set = True
                 self.p5date = currentDate
@@ -704,6 +713,7 @@ class AppForm(QMainWindow):
                 self.textbox.setText('New data did nothing')
                 self.nodata = True
                 self.incriment = True
+                
 
         # Head and shoulders with downward trend
         elif self.boolDOWN and self.headandshoulders.isChecked():
@@ -817,6 +827,11 @@ class AppForm(QMainWindow):
                 self.p5set = False
                 self.p4low = currentLow
                 self.p4high = currentHigh
+
+                self.diff = self.p2high - self.p3low 
+                self.diff = self.diff /2
+                self.difflow = self.p3low + self.diff
+                
                 self.p24line = True
                 self.p4arrow = True
                 self.p5arrow = False
@@ -835,9 +850,9 @@ class AppForm(QMainWindow):
                 self.p5arrow = False
                 self.daysoftrend = 0
                 self.textbox.setText('HEAD Reset Point 4 set at %.2f'%self.p4high)            
-                
-            # set point 5
-            elif currentLow < self.p1low and currentLow > self.p3low and self.p1set and self.p2set and self.p3set and self.p4set and not self.p5set:
+
+            # new point 5
+            elif currentLow < self.difflow and self.p1set and self.p2set and self.p3set and self.p4set and not self.p5set:
                 self.p5high = currentHigh
                 self.p5low = currentLow
                 self.p5set = True
@@ -849,7 +864,7 @@ class AppForm(QMainWindow):
             else:
                 self.textbox.setText('New data did nothing')
                 self.nodata = True
-                self.incriment = True
+                self.incriment = True                
                 
         self.on_draw()
 
