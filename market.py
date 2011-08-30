@@ -24,7 +24,7 @@ class AppForm(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
         self.version = "1.60"
-        self.setWindowTitle('Daily Chart')
+        self.setWindowTitle('Chart')
 
         self.setup_dbase()
         self.create_menu()
@@ -38,7 +38,7 @@ class AppForm(QMainWindow):
 
     def setup_dbase(self):
         self.ticker = 'MSFT'
-        self.db = MySQLdb.connect(host='ec2-184-73-152-25.compute-1.amazonaws.com', user='nick', passwd='mohair94', port=3307, db='market')
+        self.db = MySQLdb.connect(host='184.73.152.25', user='nick', passwd='mohair94', port=3307, db='ticks')
         self.curs = self.db.cursor()
 
     def create_main_frame(self):
@@ -47,8 +47,9 @@ class AppForm(QMainWindow):
         # Create the mpl Figure and FigCanvas objects. 
         # 7x6 inches, 100 dots-per-inch
         #
-        self.dpi = 200
-        self.fig = Figure((7.0, 7.0), dpi=self.dpi, linewidth=1.0, frameon=True)
+        self.dpi = 100
+        self.fig = Figure((6.0, 6.0), dpi=self.dpi, linewidth=1.0, frameon=True)
+
         self.canvas = FigureCanvas(self.fig)
 #        self.canvas.setParent(self.main_frame)
         
@@ -98,9 +99,12 @@ class AppForm(QMainWindow):
         #self.connect(self.headandshoulders, SIGNAL('stateChanged(int)'), self.on_draw)
 
         self.firstdatebox = QDateEdit()
+        self.firstdatebox.setDisplayFormat('yyyy-MM-dd')
+        self.firstdatebox.setDate(QDate.fromString('2006-01-01', 'yyyy-MM-dd'))
 
-        self.firstdatebox.setDisplayFormat('MM/yyyy')
-        self.firstdatebox.setDate(QDate.fromString('012006', 'MMyyyy'))
+        self.seconddatebox = QDateEdit()
+        self.seconddatebox.setDisplayFormat('yyyy-MM-dd')
+        self.seconddatebox.setDate(QDate.fromString('2006-01-01', 'yyyy-MM-dd'))                
 
         self.datebutton = QPushButton("&Change Date")
         self.connect(self.datebutton, SIGNAL('clicked()'), self.change_dates)
@@ -146,16 +150,14 @@ class AppForm(QMainWindow):
         label = QLabel()
         label.setText("Step 4: Enter Date to Focus On           ")
         hbox12.addWidget(label)
-        for w in [self.firstdatebox, self.datebutton]:
+        for w in [self.firstdatebox, self.seconddatebox, self.datebutton]:
             hbox12.addWidget(w)
             hbox12.setAlignment(w, Qt.AlignVCenter)
         hbox12.addItem(spacerItem1)
-
         
         for x in [ self.textbox, self.draw_button ]:
             hbox2.addWidget(x)
-            hbox2.setAlignment(x, Qt.AlignVCenter)
-        
+            hbox2.setAlignment(x, Qt.AlignVCenter)        
         
         vbox = QVBoxLayout()
         vbox.addWidget(self.canvas)
@@ -192,14 +194,13 @@ class AppForm(QMainWindow):
         self.add_actions(self.help_menu, (about_action,))
 
     def get_stock(self):
-        self.ticker = str(self.stockbox.text()).upper()
+        self.ticker = str(self.stockbox.text())
         startdate = datetime.date(2006,1,1)
         today = datetime.date.today()
 
         tableexists = True
         stockexists = True
-
-        query="""SHOW TABLES FROM market LIKE '%s'"""%self.ticker
+        query="""SHOW TABLES FROM ticks LIKE '%s'"""%self.ticker
         self.curs.execute(query)
         exists = self.curs.fetchall()
         if exists == ():
@@ -211,24 +212,30 @@ class AppForm(QMainWindow):
             self.fh = self.whole
         else:
             QMessageBox.information(self, "Hold On", "Stock data is not in database. Fetching data from Yahoo.\n This might take a minute")                        
-            insert = finance.quotes_historical_yahoo(self.ticker, startdate, today, adjusted=True)
+#            insert = finance.quotes_historical_yahoo(self.ticker, startdate, today, adjusted=True)
             if insert == []:
                 stockexists = False
 
         if stockexists and not tableexists:
-            self.curs.execute("CREATE TABLE %s(id int AUTO_INCREMENT,date int,open float,close float,high float, low float, volume float, PRIMARY KEY(id))ENGINE=MYISAM;"%self.ticker)
+#            self.curs.execute("CREATE TABLE %s(id int AUTO_INCREMENT,date int,open float,close float,high float, low float, volume float, PRIMARY KEY(id))ENGINE=MYISAM;"%self.ticker)
             query="""INSERT INTO %s(date,open,close,high,low,volume) values(%%s,%%s,%%s,%%s,%%s,%%s)"""%self.ticker
             for row in insert:
-                self.curs.execute(query,(row[0],row[1],row[2],row[3],row[4],row[5]))
+                pass
+#                self.curs.execute(query,(row[0],row[1],row[2],row[3],row[4],row[5]))
             query="""SELECT date,open,close,high,low,id from %s order by date"""%self.ticker
-            self.curs.execute(query)
+#            self.curs.execute(query)
             self.whole = self.curs.fetchall()
             self.fh = self.whole
             tableexists = True
         elif not stockexists:
             QMessageBox.information(self, "Error", "Could not find a stock with that name on Yahoo")            
 
+        self.fh = []
         if stockexists and tableexists:
+            for x in range(0, len(self.whole)):
+                a = datetime.datetime.fromtimestamp(self.whole[x][0])
+                self.fh.append((date2num(a), self.whole[x][1], self.whole[x][2], self.whole[x][3], self.whole[x][4], self.whole[x][5]))
+
             self.setup_trend()
             self.on_draw()       
 
@@ -332,29 +339,44 @@ class AppForm(QMainWindow):
             QMessageBox.information(self, "Error", "You must load a stock in before changing dates")
             return                        
         temp =  self.firstdatebox.date()
-
+        second = self.seconddatebox.date()
+        
         t1 = datetime.datetime(temp.year(), temp.month(), temp.day())
-        t2 = int(date2num(t1))
+        t2 = num2epoch(t1.toordinal())
+        t2 = int(t2)
+        
+        x = 0
         for row in self.whole:
+            x += 1
             if t2 <= row[0]:
                 firstvalue = row[5]
                 break
-            
+
+        temp =  self.seconddatebox.date()
         t1 = datetime.datetime(temp.year(), temp.month(), temp.day())
-        t1 += datetime.timedelta(days=150)
-        t2 = int(date2num(t1))
+        t2 = num2epoch(t1.toordinal())
+        t2 = int(t2)
+
+
+        y = 0
         for row in self.whole:
+            y += 1
             if t2 <= row[0]:
                 lastvalue = row[5]
                 break
+
+        print x, y
+        self.fh = []
         try:
-            self.fh = self.whole[firstvalue:lastvalue]
+            for t in range(x, y):
+                a = datetime.datetime.fromtimestamp(self.whole[t][0])
+                self.fh.append((date2num(a), self.whole[t][1], self.whole[t][2], self.whole[t][3], self.whole[t][4], self.whole[t][5]))
         except:
             QMessageBox.information(self, "Error", "The dates are out of range")
             return
         
         self.setup_trend()
-        self.trendline = True
+        self.trendline = False
         self.textbox.setText('Press Next to Start Looking for Trend')
         self.on_draw()
 
@@ -872,7 +894,6 @@ class AppForm(QMainWindow):
         DAYS = int(self.trendlengthbox.text())
         TRENDRATE = int(self.percentbox.text())
         # clear the axes and redraw the plot anew
-        #
         self.axes.clear()        
         try:
             diff = self.fh[-1][0] - self.fh[0][0]
@@ -890,16 +911,17 @@ class AppForm(QMainWindow):
             self.axes.xaxis.set_major_formatter(DateFormatter('%Y'))
             self.axes.xaxis.set_minor_locator(MonthLocator())
         elif diff <= 180 and diff > 100:
-            finance.candlestick(self.axes, quotes=self.fh, width=0.4, colorup='green', colordown='red')
+            finance.candlestick(self.axes, quotes=self.fh, width=0.5, colorup='green', colordown='red')
             self.axes.xaxis.set_major_locator(MonthLocator()) # major ticks on the mondays
             self.axes.xaxis.set_minor_locator(WeekdayLocator(MONDAY)) # minor ticks on the days
             self.axes.xaxis.set_major_formatter(DateFormatter('%b')) # Eg, Jan 12
         else:
-            finance.candlestick(self.axes, quotes=self.fh, width=0.4, colorup='green', colordown='red')
-            self.axes.xaxis.set_major_locator(WeekdayLocator(MONDAY)) # major ticks on the mondays
-            self.axes.xaxis.set_minor_locator(DayLocator()) # minor ticks on the days
+            finance.candlestick(self.axes, quotes=self.fh, width=0.01, colorup='green', colordown='red')
+            #self.axes.xaxis.set_major_locator(WeekdayLocator()) # major ticks on the mondays
+            #self.axes.xaxis.set_minor_locator(HourLocator()) # minor ticks on the days
+            self.axes.xaxis.set_minor_locator(AutoDateLocator()) # minor ticks on the days
             self.axes.xaxis.set_major_formatter(DateFormatter('%b %d')) # Eg, Jan 12
-
+   
         if self.trendline:
             self.axes.annotate('Start', xy=(self.fh[self.counter-DAYS][0],self.fh[self.counter-DAYS][3]), xytext=(-50,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->")) 
             self.axes.annotate('End', xy=(self.fh[self.counter][0],self.fh[self.counter][3]), xytext=(-50,30), xycoords='data', textcoords='offset points',arrowprops=dict(arrowstyle="->"))         
@@ -966,21 +988,26 @@ class AppForm(QMainWindow):
             else:
                 lower = self.fh[self.counter][2]
                 height = self.fh[self.counter][1] - self.fh[self.counter][2]
-            rect = Rectangle(xy=(self.fh[self.counter][0]-0.3,lower),width=0.6,height=height,facecolor='blue',edgecolor='blue')
+            rect = Rectangle(xy=(self.fh[self.counter][0]-0.3,lower),width=0.4,height=height,facecolor='blue',edgecolor='blue')
     
             self.axes.add_line(highlight)
             self.axes.add_patch(rect)
             self.nodata = False
 
-        self.axes.set_title('%s Daily'%self.ticker)
+        self.axes.set_title('%s'%self.ticker)
         self.axes.xaxis_date()
 
+        firsttime = datetime.datetime.fromordinal(int(self.fh[0][0]))
+        secondtime = datetime.datetime.fromordinal(int(self.fh[-1][0]))
+
+        self.firstdatebox.setDate(QDate.fromString(firsttime.strftime("%d%m%Y"), "ddMMyyyy"))
+        self.seconddatebox.setDate(QDate.fromString(secondtime.strftime("%d%m%Y"), "ddMMyyyy"))
+                                                  
         for label in self.axes.get_xticklabels():
-            label.set_rotation(45)
+            label.set_rotation(20)
             label.set_horizontalalignment('right')
 
-        self.axes.grid()
-        
+        self.axes.grid()        
         self.canvas.draw()
 
         if self.trianglefound:
